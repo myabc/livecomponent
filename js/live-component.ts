@@ -110,6 +110,7 @@ if (!window.customElements.get('live-component')) {
 export type RenderRequest = {
   state: State
   reflexes: Reflex[]
+  format?: "slots" | "html"
 }
 
 export type ErrorResponseStatus = "server-error" | "client-error"
@@ -120,6 +121,12 @@ export type SuccessResponse = {
   body: string
 }
 
+export type SlotsResponse = {
+  success: true
+  state: State
+  dynamics: unknown
+}
+
 export type ErrorResponse = {
   success: false
   status: ErrorResponseStatus | "unknown"
@@ -128,4 +135,4 @@ export type ErrorResponse = {
   backtrace?: string[]
 }
 
-export type RenderResponse = SuccessResponse | ErrorResponse;
+export type RenderResponse = SuccessResponse | SlotsResponse | ErrorResponse;

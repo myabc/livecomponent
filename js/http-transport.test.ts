@@ -1,5 +1,5 @@
 import { HTTPTransport } from "./http-transport";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { RenderRequest } from "./live-component";
 import { encode_payload, encode_request } from "./payload";
 
@@ -183,6 +183,48 @@ describe("HTTPTransport", () => {
 
       expect("credentials" in mock_fetch.mock.calls[0][1]).toBe(false);
     });
+  });
+});
+
+describe("HTTPTransport slots format", () => {
+  const request = { state: { props: {}, slots: {}, children: {} }, reflexes: [] };
+
+  const stub_fetch = (body: string, contentType: string) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body, {
+      status: 200,
+      headers: { "Content-Type": contentType },
+    })));
+  };
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("parses application/json responses into a SlotsResponse", async () => {
+    const envelope = { success: true, state: { props: { count: 1 }, slots: {}, children: {} }, dynamics: { slots: { 0: "1" } } };
+    stub_fetch(JSON.stringify(envelope), "application/json");
+
+    const response = await new HTTPTransport().render({ ...request, format: "slots" });
+
+    expect(response.success).toBe(true);
+    expect("dynamics" in response && response.dynamics).toEqual(envelope.dynamics);
+    expect("state" in response && response.state).toEqual(envelope.state);
+  });
+
+  it("sends Accept including application/json only for slots requests", async () => {
+    stub_fetch(JSON.stringify({ success: true, state: {}, dynamics: {} }), "application/json");
+    await new HTTPTransport().render({ ...request, format: "slots" });
+
+    const headers = (fetch as any).mock.calls[0][1].headers;
+    expect(headers["Accept"]).toContain("application/json");
+  });
+
+  it("still decodes text/html responses through the payload path", async () => {
+    const encoded = await encode_payload("<div>html</div>");
+    stub_fetch(encoded, "text/html");
+
+    const response = await new HTTPTransport().render(request);
+
+    expect(response.success).toBe(true);
+    expect("body" in response && response.body).toBe("<div>html</div>");
   });
 });
 
