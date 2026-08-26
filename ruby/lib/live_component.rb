@@ -8,6 +8,7 @@ module LiveComponent
   autoload :DateSerializer,         "live_component/date_serializer"
   autoload :DateTimeSerializer,     "live_component/date_time_serializer"
   autoload :DurationSerializer,     "live_component/duration_serializer"
+  autoload :Dynamics,               "live_component/dynamics"
   autoload :InlineSerializer,       "live_component/inline_serializer"
   autoload :Middleware,             "live_component/middleware"
   autoload :ModelSerializer,        "live_component/model_serializer"

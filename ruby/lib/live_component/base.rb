@@ -10,6 +10,7 @@ module LiveComponent
       base.prepend(Overrides)
       base.include(InstanceMethods)
       base.extend(ClassMethods)
+      base.extend(Dynamics::ClassMethods)
     end
 
     module ClassMethods

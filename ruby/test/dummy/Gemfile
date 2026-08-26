@@ -50,3 +50,6 @@ end
 gem "view_component", "~> 4.0"
 gem "live_component", path: "../../"
 gem "vite_rails", "~> 3.0"
+
+gem "herb", path: "../../../../herb"
+gem "reactionview", path: "../../../../reactionview"
