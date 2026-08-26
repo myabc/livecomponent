@@ -17,6 +17,7 @@ module LiveComponent
   autoload :Payload,                "live_component/payload"
   autoload :RangeSerializer,        "live_component/range_serializer"
   autoload :RecordProxy,            "live_component/record_proxy"
+  autoload :RenderSession,          "live_component/render_session"
   autoload :SafeDispatcher,         "live_component/safe_dispatcher"
   autoload :Serializer,             "live_component/serializer"
   autoload :TimeWithZoneSerializer, "live_component/time_with_zone_serializer"

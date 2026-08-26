@@ -2,6 +2,8 @@
 
 module LiveComponent
   class RenderComponent < ViewComponent::Base
+    attr_reader :component
+
     def initialize(state, reflexes, prop_overrides = {})
       @state = LiveComponent::State.build(state, prop_overrides)
       @reflexes = reflexes
@@ -9,6 +11,7 @@ module LiveComponent
 
     def render_in(view_context, &block)
       component = @state.klass.new(**@state.props.symbolize_keys)
+      @component = component
 
       @reflexes.each do |reflex|
         method_name = reflex["method_name"] || reflex[:method_name]
