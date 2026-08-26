@@ -9,10 +9,8 @@ end
 
 module LiveComponent
   module Dynamics
-    # Mirrors `ActionView::OutputBuffer#<<`, the method ReActionView's Herb engine routes a plain
-    # `<%= %>` through: pass an already-`html_safe?` value through unescaped, otherwise HTML-escape
-    # it. `Herb::Engine.h` (the compiler's own default) always escapes regardless of `html_safe?`,
-    # which would desync a dynamics value from the markup the same template just rendered.
+    # Matches `ActionView::OutputBuffer#<<`: pass an already-`html_safe?` value through
+    # unescaped, otherwise HTML-escape it.
     def self.h(value)
       value = value.to_s
       value.html_safe? ? value : CGI.escapeHTML(value)
@@ -27,7 +25,10 @@ module LiveComponent
         filename: path,
         project_path: Rails.root.to_s,
         escape: true,
-        escapefunc: "LiveComponent::Dynamics.h"
+        escapefunc: "LiveComponent::Dynamics.h",
+        attrfunc: nil,
+        jsfunc: nil,
+        cssfunc: nil
       ).src
 
       component_class.class_eval <<~RUBY, path, 0

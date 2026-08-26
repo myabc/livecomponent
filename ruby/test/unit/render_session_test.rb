@@ -27,10 +27,15 @@ class RenderSessionTest < TestCase
   test "dispatches each reflex exactly once" do
     result = LiveComponent::RenderSession.call(
       state: counter_state,
-      reflexes: [{ "method_name" => "increment", "props" => {} }]
+      reflexes: [
+        { "method_name" => "increment", "props" => {} },
+        { "method_name" => "increment", "props" => {} },
+      ]
     )
 
-    assert_equal 6, result.state.dig("props", "count")
+    # Two reflexes, each incrementing by 1, from a starting count of 5: 7 if
+    # each ran exactly once, 9 if either ran twice.
+    assert_equal 7, result.state.dig("props", "count")
   end
 
   test "dynamics is nil for dynamics-incapable components" do
@@ -51,7 +56,12 @@ class RenderSessionTest < TestCase
   test "escaping parity between html render and dynamics values" do
     state = {
       "ruby_class" => "DynamicsEscapingComponent",
-      "props" => { "text" => %(<b>&"bold"</b>), "safe_html" => "<i>em</i>" },
+      "props" => {
+        "text" => %(<b>&"bold"</b>),
+        "safe_html" => "<i>em</i>",
+        "css_class" => %(foo&bar),
+        "safe_attr" => "<raw>",
+      },
       "slots" => {},
       "children" => {},
     }
@@ -66,5 +76,14 @@ class RenderSessionTest < TestCase
            "dynamics text value not escaped like the HTML render: #{values.inspect}"
     assert values.any? { |v| v.include?("<i>em</i>") },
            "dynamics html_safe value lost its markup: #{values.inspect}"
+
+    # Same parity for an attribute-value expression: plain attribute values
+    # escape, an html_safe attribute value passes through unescaped.
+    assert_includes result.html, "foo&amp;bar"
+    assert values.any? { |v| v.include?("foo&amp;bar") },
+           "dynamics attribute value not escaped like the HTML render: #{values.inspect}"
+    assert_includes result.html, "<raw>"
+    assert values.any? { |v| v.include?("<raw>") },
+           "dynamics html_safe attribute value lost its markup: #{values.inspect}"
   end
 end
