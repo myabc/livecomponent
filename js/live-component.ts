@@ -1,7 +1,7 @@
 import { Idiomorph } from "idiomorph";
 import { ComponentBuilder } from "./component-builder";
 import { LiveController } from "./live-controller";
-import { Application } from "./application";
+import { Application, SlotsLike } from "./application";
 import { Task } from "./queue";
 import { render_error_dialog } from "./error-dialog";
 
@@ -62,20 +62,48 @@ export class LiveComponent<P extends Props = Props, SL extends SlotDefs = SlotDe
     const controller = await this.controller;
     if (task?.canceled) return;
 
-    const response = await (await Application.instance).render(request);
+    const app = await Application.instance;
+    const slots = app.slots;
+    const response = await app.render(slots ? { ...request, format: "slots" } : request);
     if (task?.canceled) return;
 
     if (!response.success) {
-      const error_dialog_html = render_error_dialog(response as ErrorResponse);
-      const error_dialog = document.createElement("div");
-      error_dialog.innerHTML = error_dialog_html;
-      document.body.appendChild(error_dialog);
-      (error_dialog.querySelector("dialog") as HTMLDialogElement).showModal();
+      this.show_error_dialog(response as ErrorResponse);
       return;
     }
 
+    if ("dynamics" in response) {
+      if (this.apply_dynamics(slots!, response)) {
+        controller.propagate_state(response.state as State<P>);
+        return;
+      }
+
+      const fallback = await app.render({ state: response.state, reflexes: [], format: "html" });
+      if (task?.canceled) return;
+
+      if (!fallback.success) {
+        this.show_error_dialog(fallback as ErrorResponse);
+        return;
+      }
+
+      this.morph_html(fallback as SuccessResponse, controller);
+      return;
+    }
+
+    this.morph_html(response as SuccessResponse, controller);
+  }
+
+  private show_error_dialog(response: ErrorResponse) {
+    const error_dialog_html = render_error_dialog(response);
+    const error_dialog = document.createElement("div");
+    error_dialog.innerHTML = error_dialog_html;
+    document.body.appendChild(error_dialog);
+    (error_dialog.querySelector("dialog") as HTMLDialogElement).showModal();
+  }
+
+  private morph_html(response: SuccessResponse, controller: LiveController<P, SL>) {
     const el = document.createElement("div");
-    el.innerHTML = (response as SuccessResponse).body;
+    el.innerHTML = response.body;
     const first_child = el.querySelector("[data-livecomponent]") as LiveComponent;
     const new_state = JSON.parse(first_child.getAttribute("data-state") ?? "{}");
     first_child.removeAttribute("data-state");
@@ -94,6 +122,25 @@ export class LiveComponent<P extends Props = Props, SL extends SlotDefs = SlotDe
 
     controller.propagate_state(new_state);
   }
+
+  // Returns false when the payload could not be fully applied; a partial
+  // apply is reverted when a token exists, and a thrown apply has no token
+  // to revert, so the HTML fallback repairs whatever was written.
+  private apply_dynamics(slots: SlotsLike, response: SlotsResponse): boolean {
+    let report;
+
+    try {
+      report = slots.apply(response.dynamics);
+    } catch (e) {
+      console.warn("[LiveComponent] slots.apply threw, falling back to HTML", e);
+      return false;
+    }
+
+    if (report.deferred.length === 0) return true;
+
+    if (report.token != null) slots.revert(report.token);
+    return false;
+  }
 }
 
 declare global {
@@ -110,6 +157,7 @@ if (!window.customElements.get('live-component')) {
 export type RenderRequest = {
   state: State
   reflexes: Reflex[]
+  format?: "slots" | "html"
 }
 
 export type ErrorResponseStatus = "server-error" | "client-error"
@@ -120,6 +168,12 @@ export type SuccessResponse = {
   body: string
 }
 
+export type SlotsResponse = {
+  success: true
+  state: State
+  dynamics: unknown
+}
+
 export type ErrorResponse = {
   success: false
   status: ErrorResponseStatus | "unknown"
@@ -128,4 +182,4 @@ export type ErrorResponse = {
   backtrace?: string[]
 }
 
-export type RenderResponse = SuccessResponse | ErrorResponse;
+export type RenderResponse = SuccessResponse | SlotsResponse | ErrorResponse;

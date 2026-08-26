@@ -10,6 +10,7 @@ module LiveComponent
       base.prepend(Overrides)
       base.include(InstanceMethods)
       base.extend(ClassMethods)
+      base.extend(Dynamics::ClassMethods)
     end
 
     module ClassMethods
@@ -169,6 +170,7 @@ module LiveComponent
 
     module InstanceMethods
       attr_reader :__lc_attributes
+      attr_reader :__lc_rendered_state
 
       def __lc_id
         @__lc_id ||= @__lc_attributes["data-id"] || SecureRandom.uuid
@@ -233,6 +235,7 @@ module LiveComponent
           slots: @__lc[:slots] || {},
           children: @__lc[:children] || {},
         )
+        @__lc_rendered_state = current_state
 
         result = UseContext.use_context(:__lc_context, :state) do |parent_state|
           if !parent_state

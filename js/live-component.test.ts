@@ -1,5 +1,26 @@
-import { describe, it, expect, beforeAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import { TestContext, testSetup } from "./test-helpers/setup";
+import { SlotsLike } from "./application";
+import { SlotsResponse, SuccessResponse, State } from "./live-component";
+
+const make_slots = (behavior: { report?: { applied: number; deferred: unknown[]; token?: number }, throws?: Error }): SlotsLike => ({
+  apply: vi.fn(() => {
+    if (behavior.throws) throw behavior.throws;
+    return behavior.report!;
+  }),
+  revert: vi.fn(() => true),
+});
+
+const slots_response = (count: number): SlotsResponse => ({
+  success: true,
+  state: { props: { count }, slots: {}, children: {} },
+  dynamics: { template: "t.html.erb", version: "abc", occurrence: 0, slots: { 0: String(count) } },
+});
+
+const html_response = (state: State): SuccessResponse => ({
+  success: true,
+  body: `<live-component data-livecomponent="true" data-state='${JSON.stringify(state)}'><div>html</div></live-component>`,
+});
 
 describe("LiveComponent", () => {
   let testContext: TestContext;
@@ -104,6 +125,86 @@ describe("LiveComponent", () => {
       const div = component_wrapper.querySelector("div");
       expect(div.getAttribute("attribute")).toStrictEqual("value");
       expect(div.textContent).toStrictEqual("content");
+    });
+  });
+
+  describe("render with slots", () => {
+    afterEach(() => { testContext.liveApp.slots = null; });
+
+    it("applies dynamics and propagates envelope state without morphing", async () => {
+      const slots = make_slots({ report: { applied: 1, deferred: [] } });
+      testContext.liveApp.slots = slots;
+      const component = await testContext.make_component(null, () => "<div>orig</div>");
+      vi.mocked(testContext.transport.render).mockResolvedValue(slots_response(6));
+
+      await component.component.render(TestContext.make_request());
+
+      expect(slots.apply).toHaveBeenCalledWith(slots_response(6).dynamics);
+      expect(testContext.transport.render).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(testContext.transport.render).mock.calls[0][0].format).toBe("slots");
+      const controller = await component.component.controller;
+      expect(controller.state.props).toStrictEqual({ count: 6 });
+      expect(component.component.querySelector("div")?.textContent).toBe("orig");
+    });
+
+    it("reverts and falls back to HTML on a deferred report with a token", async () => {
+      const slots = make_slots({ report: { applied: 1, deferred: [{ reason: "branch" }], token: 7 } });
+      testContext.liveApp.slots = slots;
+      const component = await testContext.make_component(null, () => "<div>orig</div>");
+      const envelope = slots_response(6);
+      vi.mocked(testContext.transport.render)
+        .mockResolvedValueOnce(envelope)
+        .mockResolvedValueOnce(html_response(envelope.state));
+
+      await component.component.render(TestContext.make_request());
+
+      expect(slots.revert).toHaveBeenCalledWith(7);
+      expect(testContext.transport.render).toHaveBeenCalledTimes(2);
+      const fallback_request = vi.mocked(testContext.transport.render).mock.calls[1][0];
+      expect(fallback_request.reflexes).toStrictEqual([]);
+      expect(fallback_request.format).toBe("html");
+      expect(fallback_request.state).toStrictEqual(envelope.state);
+      expect(component.component.querySelector("div")?.textContent).toBe("html");
+    });
+
+    it("skips revert when the deferred report has no token", async () => {
+      const slots = make_slots({ report: { applied: 0, deferred: [{ reason: "branch" }] } });
+      testContext.liveApp.slots = slots;
+      const component = await testContext.make_component(null, () => "<div>orig</div>");
+      const envelope = slots_response(6);
+      vi.mocked(testContext.transport.render)
+        .mockResolvedValueOnce(envelope)
+        .mockResolvedValueOnce(html_response(envelope.state));
+
+      await component.component.render(TestContext.make_request());
+
+      expect(slots.revert).not.toHaveBeenCalled();
+      expect(testContext.transport.render).toHaveBeenCalledTimes(2);
+    });
+
+    it("falls back to HTML without revert when apply throws", async () => {
+      const slots = make_slots({ throws: new Error("boom") });
+      testContext.liveApp.slots = slots;
+      const component = await testContext.make_component(null, () => "<div>orig</div>");
+      const envelope = slots_response(6);
+      vi.mocked(testContext.transport.render)
+        .mockResolvedValueOnce(envelope)
+        .mockResolvedValueOnce(html_response(envelope.state));
+
+      await component.component.render(TestContext.make_request());
+
+      expect(slots.revert).not.toHaveBeenCalled();
+      expect(component.component.querySelector("div")?.textContent).toBe("html");
+    });
+
+    it("uses the plain HTML path when no slots are configured", async () => {
+      const component = await testContext.make_component(null, () => "<div>orig</div>");
+      vi.mocked(testContext.transport.render).mockResolvedValue(html_response(TestContext.make_state()));
+
+      await component.component.render(TestContext.make_request());
+
+      expect(vi.mocked(testContext.transport.render).mock.calls[0][0].format).toBeUndefined();
+      expect(component.component.querySelector("div")?.textContent).toBe("html");
     });
   });
 });

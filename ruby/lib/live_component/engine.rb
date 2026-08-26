@@ -17,5 +17,12 @@ module LiveComponent
         include LiveComponent::ApplicationHelper
       end
     end
+
+    initializer "live_component.dynamics" do
+      ActiveSupport.on_load(:view_component) do
+        extend LiveComponent::Dynamics::ClassMethods
+        ViewComponent::Template.prepend(LiveComponent::Dynamics::TemplatePatch)
+      end
+    end
   end
 end

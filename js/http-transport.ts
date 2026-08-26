@@ -51,12 +51,13 @@ export class HTTPTransport implements Transport {
 
   private async render_request(request: RenderRequest): Promise<RenderResponse> {
     const payload = await encode_request(request);
+    const accept = request.format === "slots" ? "application/json, text/html" : "text/html";
 
     const response = await fetch(this.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "text/html",
+        "Accept": accept,
         ...(await this.extra_headers())
       },
       ...(this.options.credentials ? { credentials: this.options.credentials } : {}),
@@ -78,14 +79,17 @@ export class HTTPTransport implements Transport {
         backtrace,
         status: error_status
       };
-    } else {
-      const decoded_body = await decode_response(body);
-
-      return {
-        success: true,
-        body: decoded_body,
-      };
     }
+
+    const content_type = response.headers.get("Content-Type") ?? "";
+
+    if (content_type.includes("application/json")) {
+      const envelope = JSON.parse(body);
+      return { success: true, state: envelope.state, dynamics: envelope.dynamics };
+    }
+
+    const decoded_body = await decode_response(body);
+    return { success: true, body: decoded_body };
   }
 
   private async extra_headers(): Promise<Record<string, string>> {

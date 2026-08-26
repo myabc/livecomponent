@@ -1,4 +1,17 @@
 PATH
+  remote: ../../herb
+  specs:
+    herb (0.10.3)
+
+PATH
+  remote: ../../reactionview
+  specs:
+    reactionview (0.4.0)
+      actionview (>= 7.0)
+      cruise
+      herb (>= 0.10.0, < 0.11.0)
+
+PATH
   remote: .
   specs:
     live_component (0.4.0)
@@ -102,6 +115,7 @@ GEM
     concurrent-ruby (1.3.5)
     connection_pool (2.5.4)
     crass (1.0.6)
+    cruise (0.2.0-arm64-darwin)
     cuprite (0.17)
       capybara (~> 3.0)
       ferrum (~> 0.17.0)
@@ -285,6 +299,7 @@ DEPENDENCIES
   cuprite (~> 0.17)
   debug
   ferrum (~> 0.17)
+  herb!
   jbuilder
   jsbundling-rails
   live_component!
@@ -292,6 +307,7 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.3)
+  reactionview!
   sqlite3 (>= 2.1)
   stimulus-rails
   turbo-rails

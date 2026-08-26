@@ -27,9 +27,26 @@ module LiveComponent
       data = JSON.parse(raw_data)
       payload, compressed = LiveComponent::Payload.decode_request(data["payload"])
 
-      result = LiveComponent::RenderController.renderer.render(
-        :show, assigns: { state: payload["state"], reflexes: payload["reflexes"] }, layout: false
-      )
+      session = nil
+      if payload["format"] == "slots"
+        session = LiveComponent::RenderSession.call(
+          state: payload["state"], reflexes: payload["reflexes"]
+        )
+
+        if session.dynamics
+          body = JSON.generate(success: true, state: session.state, dynamics: session.dynamics)
+          return [200, { "Content-Type" => "application/json" }, [body]]
+        end
+      end
+
+      result =
+        if session
+          session.html
+        else
+          LiveComponent::RenderController.renderer.render(
+            :show, assigns: { state: payload["state"], reflexes: payload["reflexes"] }, layout: false
+          )
+        end
 
       result = LiveComponent::Payload.encode_response(result, compress: compressed)
 

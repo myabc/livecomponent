@@ -76,6 +76,15 @@ export interface Transport {
   render(request: RenderRequest): Promise<RenderResponse>;
 }
 
+export interface SlotsLike {
+  apply(payload: unknown): { applied: number; deferred: unknown[]; token?: number };
+  revert(token: number): boolean;
+}
+
+export interface ApplicationOptions {
+  slots?: SlotsLike;
+}
+
 export class Application {
   private static application: Application;
   private static application_promise: Promise<Application>;
@@ -91,7 +100,7 @@ export class Application {
     return this.application_promise;
   }
 
-  static start(stimulus: Stimulus, transport?: Transport) {
+  static start(stimulus: Stimulus, transport?: Transport, options?: ApplicationOptions) {
     if (this.application) {
       return this.application;
     }
@@ -106,7 +115,7 @@ export class Application {
     document.addEventListener("turbo:submit-start", handle_turbo_submit_start);
     document.addEventListener("turbo:submit-end", handle_turbo_submit_end);
 
-    this.application = new Application(stimulus, transport);
+    this.application = new Application(stimulus, transport, options);
     this.resolve_application(this.application);
 
     return this.application;
@@ -151,10 +160,12 @@ export class Application {
 
   public transport: Transport;
   public stimulus: Stimulus;
+  public slots: SlotsLike | null;
 
-  protected constructor(stimulus: Stimulus, transport: Transport) {
+  protected constructor(stimulus: Stimulus, transport: Transport, options?: ApplicationOptions) {
     this.transport = transport;
     this.stimulus = stimulus;
+    this.slots = options?.slots ?? null;
   }
 
   async render(request: RenderRequest): Promise<RenderResponse> {

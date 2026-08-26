@@ -21,7 +21,7 @@ export class WebSocketsTransport implements Transport {
     const payload = await encode_request(request);
     const response = await this.channel.render(payload, this.debug);
 
-    if (response.success) {
+    if (response.success && "body" in response) {
       return {
         ...response,
         body: await decode_response(response.body),
