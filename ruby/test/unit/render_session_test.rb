@@ -34,7 +34,7 @@ class RenderSessionTest < TestCase
     )
 
     # Two reflexes, each incrementing by 1, from a starting count of 5: 7 if
-    # each ran exactly once, 9 if either ran twice.
+    # each ran exactly once, 8 or 9 if any ran twice.
     assert_equal 7, result.state.dig("props", "count")
   end
 

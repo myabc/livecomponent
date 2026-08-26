@@ -83,6 +83,10 @@ describe("HTTPTransport", () => {
         body: JSON.stringify({payload}),
       });
 
+      const headers = mock_fetch.mock.calls[0][1].headers;
+      expect(headers["Accept"]).not.toContain("application/json");
+      expect(headers["Accept"]).toBe("text/html");
+
       expect(result).toStrictEqual({
         success: true,
         body: mock_response,

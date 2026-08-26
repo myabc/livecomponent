@@ -71,6 +71,7 @@ class MiddlewareTest < TestCase
     html = decode_html(body.first)
 
     assert_includes html, "Count: <span>6</span>"
+    refute html.end_with?("</live-component>\n")
   end
 
   test "a request without format falls back to the legacy render path" do
@@ -92,5 +93,6 @@ class MiddlewareTest < TestCase
     html = decode_html(body.first)
 
     assert_includes html, "Count: <span>5</span>"
+    assert html.end_with?("</live-component>\n")
   end
 end
