@@ -45,7 +45,7 @@
   },
   "homepage": "https://github.com/livecomponent/livecomponent#readme",
   "dependencies": {
-    "idiomorph": "^0.7"
+    "idiomorph": "^0.8"
   },
   "devDependencies": {
     "@hotwired/stimulus": "^3.2.2",
