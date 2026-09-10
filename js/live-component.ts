@@ -82,8 +82,8 @@ export class LiveComponent<P extends Props = Props, SL extends SlotDefs = SlotDe
 
     Idiomorph.morph(this, first_child, {
       callbacks: {
-        beforeNodeMorphed: (oldNode: HTMLElement, newNode: HTMLElement) => {
-          if (oldNode instanceof LiveComponent) {
+        beforeNodeMorphed: (oldNode, newNode) => {
+          if (oldNode instanceof LiveComponent && newNode instanceof HTMLElement) {
             return oldNode.before_node_morphed(oldNode, newNode);
           }
 
